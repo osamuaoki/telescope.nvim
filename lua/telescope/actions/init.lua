@@ -929,7 +929,9 @@ local send_selected_to_qf = function(prompt_bufnr, mode, target)
 
   vim.api.nvim_exec_autocmds("QuickFixCmdPre", {})
   if target == "loclist" then
+    local qf_title = string.format([[%s (%s)]], picker.prompt_title, prompt)
     vim.fn.setloclist(picker.original_win_id, qf_entries, mode)
+    vim.fn.setloclist(picker.original_win_id, {}, "a", { title = qf_title })
   else
     local qf_title = string.format([[%s (%s)]], picker.prompt_title, prompt)
     vim.fn.setqflist(qf_entries, mode)

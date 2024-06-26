@@ -494,7 +494,8 @@ internal.quickfixhistory = function(opts)
 end
 
 internal.loclist = function(opts)
-  local locations = vim.fn.getloclist(0)
+  local qf_identifier = opts.id or vim.F.if_nil(opts.nr, "$")
+  local locations = vim.fn.getloclist(0, { [opts.id and "id" or "nr"] = qf_identifier, items = true }).items
   local filenames = {}
   for _, value in pairs(locations) do
     local bufnr = value.bufnr
@@ -518,6 +519,74 @@ internal.loclist = function(opts)
       },
       previewer = conf.qflist_previewer(opts),
       sorter = conf.generic_sorter(opts),
+    })
+    :find()
+end
+
+internal.loclisthistory = function(opts)
+  local qflists = {}
+  for i = 1, 10 do -- (n)vim keeps at most 10 location lists in full
+    -- qf weirdness: id = 0 gets id of location list nr
+    local qflist = vim.fn.getloclist(0, { nr = i, id = 0, title = true, items = true })
+    if not vim.tbl_isempty(qflist.items) then
+      table.insert(qflists, qflist)
+    end
+  end
+  local entry_maker = opts.make_entry
+    or function(entry)
+      return make_entry.set_default_entry_mt({
+        value = entry.title or "Untitled",
+        ordinal = entry.title or "Untitled",
+        display = entry.title or "Untitled",
+        nr = entry.nr,
+        id = entry.id,
+        items = entry.items,
+      }, opts)
+    end
+  local qf_entry_maker = make_entry.gen_from_quickfix(opts)
+  pickers
+    .new(opts, {
+      prompt_title = "Location History",
+      finder = finders.new_table {
+        results = qflists,
+        entry_maker = entry_maker,
+      },
+      previewer = previewers.new_buffer_previewer {
+        title = "Location List Preview",
+        dyn_title = function(_, entry)
+          return entry.title
+        end,
+
+        get_buffer_by_name = function(_, entry)
+          return "quickfixlist_" .. tostring(entry.nr)
+        end,
+
+        define_preview = function(self, entry)
+          if self.state.bufname then
+            return
+          end
+          local entries = vim.tbl_map(function(i)
+            return qf_entry_maker(i):display()
+          end, entry.items)
+          vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, entries)
+        end,
+      },
+      sorter = conf.generic_sorter(opts),
+      attach_mappings = function(_, map)
+        action_set.select:replace(function(prompt_bufnr)
+          local nr = action_state.get_selected_entry().nr
+          actions.close(prompt_bufnr)
+          internal.loclist { nr = nr }
+        end)
+
+        map({ "i", "n" }, "<C-q>", function(prompt_bufnr)
+          local nr = action_state.get_selected_entry().nr
+          actions.close(prompt_bufnr)
+          vim.cmd(nr .. "lhistory")
+          vim.cmd "botright lopen"
+        end)
+        return true
+      end,
     })
     :find()
 end

@@ -294,7 +294,13 @@ builtin.quickfixhistory = require_on_exported_call("telescope.builtin.__internal
 ---@param opts table: options to pass to the picker
 ---@field show_line boolean: show results text (default: true)
 ---@field trim_text boolean: trim results text (default: false)
+---@field nr number: specify the location list number
 builtin.loclist = require_on_exported_call("telescope.builtin.__internal").loclist
+
+--- Lists all loclist lists in your history and open them with `builtin.loclist`. It seems that neovim
+--- only keeps the full history for 10 lists
+---@param opts table: options to pass to the picker
+builtin.loclisthistory = require_on_exported_call("telescope.builtin.__internal").loclisthistory
 
 --- Lists previously open files, opens on `<cr>`
 ---@param opts table: options to pass to the picker
